@@ -613,6 +613,21 @@ body.mobile #viewport{max-width:420px;box-shadow:0 0 0 1px var(--line),0 20px 60
 .card .cadd.nfy .bell{width:12px;height:12px;stroke:#fff}
 .card .cadd.nfy.done{background:var(--green)}
 
+
+/* ---------- PDP: sticky section nav docked under the header ---------- */
+.hdr .subnav.pnav{display:block;position:absolute;left:0;right:0;top:100%!important;z-index:1;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 6px 14px rgba(0,0,0,.06);opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s;pointer-events:none}
+.hdr .subnav.pnav.vis{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .18s ease;pointer-events:auto}
+.hdr .subnav.pnav .in{justify-content:center;gap:4px}
+.hdr .subnav.pnav a{padding:13px 16px 12px;font-size:13.5px;font-weight:600;color:#555;border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s}
+.hdr .subnav.pnav a:hover{color:var(--ink)}
+.hdr .subnav.pnav a.on{color:var(--green);border-color:var(--green);font-weight:700}
+.hdr .subnav.pnav a .ct{font-weight:500;color:var(--muted)}
+
+
+/* ---------- variant picker: popup on desktop, bottom sheet on mobile ---------- */
+.modal .vgrip{display:none}
+#vModal .co{margin-top:18px}
+
 /* ---------- PDP sticky add-to-cart: image, price, MRP, reviews, button ---------- */
 .sticky-atc .sx{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
 .sticky-atc .sx .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -984,6 +999,15 @@ body.mobile .ugc .ugnav{display:none}
   .card .rate{font-size:11px;gap:3px}
   .card .rate .st{font-size:11px;letter-spacing:0}
   .card .cadd{padding:6px 11px;font-size:11px}
+  #vModal{left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(102%);opacity:1;visibility:hidden;transition:transform .3s cubic-bezier(.3,.8,.4,1),visibility 0s linear .3s;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -10px 30px rgba(0,0,0,.18)}
+  #vModal.open{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.3,.8,.4,1)}
+  #vModal .vgrip{display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 0}
+  #vModal .mh{padding:12px 18px 0;gap:13px}
+  #vModal .mh img{width:78px;height:86px}
+  #vModal .mb{padding:12px 18px 18px}
+  #vModal .mclose{top:10px;right:12px}
+  .hdr .subnav.pnav .in{justify-content:flex-start;padding:0 8px;gap:0}
+  .hdr .subnav.pnav a{padding:12px 12px 11px;font-size:12.5px}
   body:has(.sticky-atc.show) .rewards{bottom:calc(var(--bnh,64px) + 82px)}
   .gal{grid-template-columns:1fr}
   .thumbs{flex-direction:row;order:2;overflow-x:auto;max-height:none!important}
@@ -1104,6 +1128,15 @@ body.mobile .ugc .ugnav{display:none}
   .card .rate{font-size:11px;gap:3px}
   .card .rate .st{font-size:11px;letter-spacing:0}
   .card .cadd{padding:6px 11px;font-size:11px}
+  #vModal{left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(102%);opacity:1;visibility:hidden;transition:transform .3s cubic-bezier(.3,.8,.4,1),visibility 0s linear .3s;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -10px 30px rgba(0,0,0,.18)}
+  #vModal.open{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.3,.8,.4,1)}
+  #vModal .vgrip{display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 0}
+  #vModal .mh{padding:12px 18px 0;gap:13px}
+  #vModal .mh img{width:78px;height:86px}
+  #vModal .mb{padding:12px 18px 18px}
+  #vModal .mclose{top:10px;right:12px}
+  .hdr .subnav.pnav .in{justify-content:flex-start;padding:0 8px;gap:0}
+  .hdr .subnav.pnav a{padding:12px 12px 11px;font-size:12.5px}
   body:has(.sticky-atc.show) .rewards{bottom:calc(var(--bnh,64px) + 82px)}
   .hcards{grid-template-columns:1fr}
   .pbar .plinks{display:none!important}
