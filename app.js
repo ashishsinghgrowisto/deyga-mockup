@@ -79,7 +79,7 @@ function headerHTML(){
     '<div class="icons">'+
       '<button class="ico msearchbtn" aria-label="Search" onclick="openSearch()">'+IC.search+'</button>'+
       '<a class="helpme dsk" href="search.html">HELP ME<br>CHOOSE</a>'+
-      '<a class="ico dsk" href="#" aria-label="Account" onclick="toast(\'Account is not part of this mockup\');return false">'+IC.user+'</a>'+
+      '<a class="ico dsk" href="#" aria-label="Account" onclick="openAccount();return false">'+IC.user+'</a>'+
       '<button class="ico" aria-label="Cart" onclick="openCart()">'+IC.bag+'<span class="badge" id="cartBadge" hidden>0</span></button>'+
     '</div>'+
    '</div>'+
@@ -201,20 +201,39 @@ function cartHTML(){
 }
 function openCart(){ q('#cartDrawer').classList.add('open'); showOvl(true); }
 function closeCart(){ q('#cartDrawer').classList.remove('open'); showOvl(false); }
-function addToCart(handle,vi,qty){
+function addToCart(handle,vi,qty,silent){
   var p=CAT[handle]; if(!p) return;
+  if(isOOS(handle)){ notifyMe(handle); return; }
   vi = vi||0; qty = qty||1;
   var key=handle+'|'+vi;
   var f=cart.filter(function(c){return c.key===key;})[0];
   if(f) f.q+=qty; else cart.push({key:key,h:handle,v:vi,q:qty});
-  saveCart(); openCart(); toast(p.title+' added to bag');
+  saveCart(); if(silent){ toast(p.title+' added to bag'); return; } openCart(); toast(p.title+' added to bag');
 }
 function chQty(key,d){
   var f=cart.filter(function(c){return c.key===key;})[0]; if(!f) return;
+  if(f.q+d<1){ confirmRemove(key); return; }
   f.q+=d; if(f.q<1) cart=cart.filter(function(c){return c.key!==key;});
   saveCart();
 }
-function rmItem(key){ cart=cart.filter(function(c){return c.key!==key;}); saveCart(); toast('Removed from bag'); }
+function doRemove(key){ cart=cart.filter(function(c){return c.key!==key;}); saveCart(); if(window.renderCartPage) renderCartPage(); }
+function rmItem(key){ confirmRemove(key); }
+var RM_KEY=null;
+function confirmRemove(key){
+  var c=cart.filter(function(x){return x.key===key;})[0]; if(!c) return;
+  var p=CAT[c.h]; RM_KEY=key;
+  var m=q('#rmModal');
+  m.querySelector('.rmb').innerHTML=
+    '<h3 id="rmTitle">Remove this item?</h3>'+
+    '<div class="rmp"><img src="'+p.img+'" alt=""><div><b>'+p.title+'</b>'+
+    '<span>'+(p.opts[c.v]&&p.opts[c.v]!=='Default Title'?p.opts[c.v]+' &middot; ':'')+'Qty '+c.q+' &middot; '+INR(p.prices[c.v]*c.q)+'</span></div></div>'+
+    '<p>Are you sure you want to remove it from your bag?</p>'+
+    '<div class="rma"><button class="no" onclick="closeRemove()">No, keep it</button><button class="yes" onclick="yesRemove()">Yes, remove</button></div>';
+  m.classList.add('open');
+  setTimeout(function(){ var b=m.querySelector('.no'); if(b) b.focus(); },60);
+}
+function closeRemove(){ q('#rmModal').classList.remove('open'); RM_KEY=null; }
+function yesRemove(){ var k=RM_KEY; closeRemove(); if(k){ doRemove(k); toast('Removed from bag'); } }
 function cartTotal(){ return cart.reduce(function(s,c){ var p=CAT[c.h]; return s + (p? p.prices[c.v]*c.q : 0); },0); }
 function cartCount(){ return cart.reduce(function(s,c){return s+c.q;},0); }
 function applyCoupon(b){ var i=b.previousElementSibling; if(i.value.trim().toUpperCase()==='DEYGA1010'){ toast('Coupon applied — 10% off'); } else { toast('Enter a valid coupon'); } }
@@ -252,7 +271,7 @@ function paintCart(){
   }
   if(window.renderCartPage) window.renderCartPage();
 }
-function moveToWish(h,key){ if(wish.indexOf(h)<0){wish.push(h);saveWish();} rmItem(key); toast('Saved to wishlist'); }
+function moveToWish(h,key){ if(wish.indexOf(h)<0){wish.push(h);saveWish();} doRemove(key); toast('Saved to wishlist'); }
 
 /* ---------------- wishlist ---------------- */
 function toggleWish(h,btn){
@@ -274,6 +293,7 @@ function modalHTML(){
 }
 function openQuick(h){
   var p=CAT[h]; if(!p) return;
+  if(isOOS(h)){ notifyMe(h); return; }
   MSTATE={h:h,v:0};
   q('#vBody').innerHTML =
     '<div class="mh"><img src="'+p.img+'" alt=""><div><h3>'+p.title+'</h3>'+
@@ -308,22 +328,26 @@ function ratingOf(h){
   var n=0; for(var i=0;i<h.length;i++) n=(n*31+h.charCodeAt(i))>>>0;
   return (46+(n%4))/10;              /* stable 4.6 – 4.9 */
 }
+var IC_VERIFIED='<svg class="vf" viewBox="0 0 24 24" aria-label="Verified reviews"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>';
+function INR0(n){ return '₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:0}); }
+function cardAdd(h){ var p=CAT[h]; if(!p) return; if(p.opts&&p.opts.length>1) openQuick(h); else addToCart(h,0,1); }
 function cardHTML(h){
   var p=CAT[h]; if(!p) return '';
-  var save = p.cmp && p.cmp>p.price ? Math.round(p.cmp-p.price) : 0;
-  return '<article class="card">'+
+  var oos=isOOS(h), disc=p.cmp&&p.cmp>p.price;
+  return '<article class="card'+(oos?' oos':'')+'">'+
     '<div class="imgw">'+
-      '<a href="product-'+h+'.html"><img src="'+p.img+'" alt="'+p.title+'" loading="lazy"></a>'+
-      (p.badge? '<span class="cb '+badgeClass(p.badge)+'">'+p.badge+'</span>' : '')+
+      '<a href="product-'+h+'.html" tabindex="-1"><img src="'+p.img+'" alt="'+p.title+'" loading="lazy"></a>'+
+      (oos? '<span class="cb so">Sold out</span>' : (p.badge? '<span class="cb '+badgeClass(p.badge)+'">'+p.badge+'</span>' : ''))+
       '<button class="heart" data-wish="'+h+'" onclick="toggleWish(\''+h+'\',this)" aria-label="Save">'+IC.heart+'</button>'+
-      '<button class="atc" onclick="openQuick(\''+h+'\')">Add to cart</button>'+
     '</div>'+
     '<div class="body">'+
-      '<div class="rate"><span class="st">&#9733;</span>'+ratingOf(h).toFixed(1)+' ('+p.rev+' Reviews)</div>'+
-      '<a class="name" href="product-'+h+'.html">'+p.title+'</a>'+
-      '<div class="sub">'+(p.sub||'')+'</div>'+
-      '<div class="price"><b>'+INR(p.price)+'</b>'+(p.cmp&&p.cmp>p.price?'<s>'+INR(p.cmp)+'</s>':'')+'</div>'+
-      (save? '<div class="savel">You&rsquo;ll save '+INR(save)+'</div>':'')+
+      '<div class="rate"><span class="st" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span>'+IC_VERIFIED+
+        '<span class="rv">'+ratingOf(h).toFixed(1)+' ('+p.rev+')</span></div>'+
+      '<a class="name" href="product-'+h+'.html" title="'+p.title+'">'+p.title+'</a>'+
+      '<div class="csub">'+(p.sub||'&nbsp;')+'</div>'+
+      '<div class="pr"><div class="price"><b>'+INR0(p.price)+'</b>'+(disc?'<s>'+INR0(p.cmp)+'</s>':'')+'</div>'+
+        (oos? notifyBtnHTML(h,'cadd nfy') : '<button class="cadd" onclick="cardAdd(\''+h+'\')" aria-label="Add '+p.title.replace(/"/g,'&quot;')+' to cart"><span>+</span>ADD</button>')+
+      '</div>'+
     '</div></article>';
 }
 function renderGrid(id,handles){
@@ -344,7 +368,7 @@ var BOTNAV=[
 function botnavHTML(){
   return '<nav class="botnav" aria-label="Mobile navigation"><ul>'+BOTNAV.map(function(b,i){
     var act = b[1].indexOf('javascript')===0;
-    var on = i===1 ? ' onclick="openCart();return false"' : (i>2 ? ' onclick="toast(\''+b[0]+' is not part of this mockup\');return false"' : '');
+    var on = i===1 ? ' onclick="openCart();return false"' : (b[0]==='Account' ? ' onclick="openAccount();return false"' : (i>2 ? ' onclick="toast(\''+b[0]+' is not part of this mockup\');return false"' : ''));
     return '<li'+(b[3]?' class="mid"':'')+'><a href="'+b[1]+'"'+on+'>'+
       '<span class="bi">'+b[2]+(i===1?'<span class="badge" id="botCartBadge" hidden>0</span>':'')+'</span>'+
       '<span class="bl">'+b[0]+'</span></a></li>';
@@ -363,6 +387,303 @@ function setVP(m){
   try{ localStorage.setItem('dg_vp', m?'1':'0'); }catch(e){}
 }
 
+/* ---------------- out of stock + notify me ---------------- */
+/* mirrors deyga.in: these handles have no available variant on the live store */
+var OOS = ['sunscreen-spf-50','sunscreen-spf-30'];
+function isOOS(h){ return OOS.indexOf(h)>-1; }
+function getUser(){ return readLS('dg_user',null); }
+function notifyList(){ return readLS('dg_notify',[]); }
+function isNotified(h){ var u=getUser(); return notifyList().some(function(n){ return n.h===h && (!u || n.e===u.email); }); }
+function notifyBtnHTML(h,cls){
+  var on=isNotified(h);
+  return '<button type="button" class="'+cls+(on?' done':'')+'" data-notify="'+h+'" onclick="notifyMe(\''+h+'\')">'+
+    (/cadd/.test(cls) ? (on? '&#10003; NOTIFIED' : IC_BELL+'NOTIFY') : (on? '&#10003; You&rsquo;ll be notified' : IC_BELL+'Notify me'))+'</button>';
+}
+var IC_BELL='<svg class="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.6 2H4.4z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>';
+var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function saveNotify(h,email){
+  var l=notifyList().filter(function(n){ return !(n.h===h && n.e===email); });
+  l.push({h:h,e:email,t:new Date().toISOString()}); writeLS('dg_notify',l); paintNotify();
+}
+function paintNotify(){
+  qa('[data-notify]').forEach(function(b){
+    var h=b.getAttribute('data-notify'), on=isNotified(h), big=b.classList.contains('add');
+    if(b.classList.contains('cadd')){ b.classList.toggle('done',on); b.innerHTML = on ? '&#10003; NOTIFIED' : IC_BELL+'NOTIFY'; return; }
+    b.classList.toggle('done',on);
+    b.innerHTML = on ? '&#10003; '+(big?'We&rsquo;ll email you when it&rsquo;s back':'You&rsquo;ll be notified')
+                     : IC_BELL+(big?'Notify me when available':'Notify me');
+  });
+}
+function notifyMe(h){
+  var p=CAT[h]; if(!p) return;
+  var u=getUser();
+  if(u && u.email){                       /* signed in: use the session email, no form */
+    saveNotify(h,u.email);
+    toast('Done — we’ll email '+u.email+' when it’s back');
+    return;
+  }
+  qa('.modal.open,.sheet.open').forEach(function(x){x.classList.remove('open');});
+  var m=q('#nModal');
+  m.querySelector('.nbody').innerHTML =
+    '<div class="mh"><img src="'+p.img+'" alt=""><div><span class="sol">Out of stock</span><h3>'+p.title+'</h3>'+
+    '<p class="nlead">Leave your email and we&rsquo;ll let you know the moment it&rsquo;s back.</p></div></div>'+
+    '<form class="mb nform" novalidate onsubmit="return submitNotify(event,\''+h+'\')">'+
+      '<label for="nEmail">Email address</label>'+
+      '<input id="nEmail" type="email" autocomplete="email" placeholder="you@example.com" required>'+
+      '<div class="nerr" id="nErr" hidden>Please enter a valid email address</div>'+
+      '<button class="co" type="submit">Notify me</button>'+
+      '<p class="nalt">Have an account? <a href="#" onclick="openAccount();return false">Sign in</a> and we&rsquo;ll use your account email.</p>'+
+    '</form>';
+  m.classList.add('open'); showOvl(true);
+  setTimeout(function(){ var i=q('#nEmail'); if(i) i.focus(); },250);
+}
+function submitNotify(e,h){
+  e.preventDefault();
+  var i=q('#nEmail'), v=(i.value||'').trim(), er=q('#nErr');
+  if(!EMAIL_RE.test(v)){ er.hidden=false; i.classList.add('bad'); i.focus(); return false; }
+  saveNotify(h,v);
+  q('#nModal .nbody').innerHTML =
+    '<div class="ndone"><div class="tick">&#10003;</div><h3>You&rsquo;re on the list</h3>'+
+    '<p>We&rsquo;ll email <b>'+v.replace(/</g,'&lt;')+'</b> as soon as <b>'+CAT[h].title+'</b> is back in stock.</p>'+
+    '<button class="co" onclick="closeNotify()">Continue shopping</button></div>';
+  return false;
+}
+function closeNotify(){ q('#nModal').classList.remove('open'); showOvl(false); if(q('.ugc.open')) document.body.style.overflow='hidden'; }
+
+/* ---------------- mock account session ---------------- */
+function openAccount(){
+  qa('.modal.open,.sheet.open').forEach(function(x){x.classList.remove('open');});
+  var u=getUser(), m=q('#nModal');
+  m.querySelector('.nbody').innerHTML = u ?
+    '<div class="mb acct"><h3>My account</h3><p>Signed in as <b>'+u.email+'</b></p>'+
+    '<p class="nalt">Back-in-stock alerts on this account: '+notifyList().filter(function(n){return n.e===u.email;}).length+'</p>'+
+    '<button class="co ghost" onclick="signOut()">Sign out</button></div>' :
+    '<form class="mb acct nform" novalidate onsubmit="return signIn(event)"><h3>Sign in</h3>'+
+    '<p class="nlead">Mockup sign-in: any valid email works, no password is stored.</p>'+
+    '<label for="aEmail">Email address</label><input id="aEmail" type="email" autocomplete="email" placeholder="you@example.com" required>'+
+    '<div class="nerr" id="aErr" hidden>Please enter a valid email address</div>'+
+    '<button class="co" type="submit">Sign in</button></form>';
+  m.classList.add('open'); showOvl(true);
+}
+function signIn(e){
+  e.preventDefault();
+  var i=q('#aEmail'), v=(i.value||'').trim();
+  if(!EMAIL_RE.test(v)){ q('#aErr').hidden=false; i.classList.add('bad'); return false; }
+  writeLS('dg_user',{email:v}); closeNotify(); paintNotify(); paintAcct(); toast('Signed in as '+v);
+  return false;
+}
+function signOut(){ try{ localStorage.removeItem('dg_user'); }catch(e){} closeNotify(); paintNotify(); paintAcct(); toast('Signed out'); }
+function paintAcct(){ var u=getUser(); qa('[aria-label="Account"]').forEach(function(a){ a.classList.toggle('signedin',!!u); a.title = u ? 'Signed in as '+u.email : 'Sign in'; }); }
+
+/* ---------------- PDP: richer sticky add-to-cart ---------------- */
+var PDP_H;
+function pdpHandle(){
+  if(PDP_H!==undefined) return PDP_H;
+  var b=q('.buyrow .add'); if(!b) return (PDP_H=null);
+  var m=(b.getAttribute('onclick')||'').match(/addToCart\('([^']+)'/); return (PDP_H=m?m[1]:null);
+}
+function paintSticky(vi){
+  var h=pdpHandle(), sa=q('#stickyAtc'), p=h&&CAT[h]; if(!p||!sa) return;
+  vi = vi||0;
+  var price=p.prices[vi]!=null?p.prices[vi]:p.price, cmp=p.cmps&&p.cmps[vi]!=null?p.cmps[vi]:(vi===0?p.cmp:null);
+  var off = cmp&&cmp>price ? Math.round((cmp-price)/cmp*100) : 0;
+  var r=ratingOf(h).toFixed(1);
+  sa.querySelector('.in').innerHTML =
+    '<img src="'+p.img+'" alt="'+p.title+'">'+
+    '<div class="sx"><div class="t">'+p.title+'</div>'+
+      '<div class="r"><span class="st">&#9733;</span> '+r+' <span class="rc">('+p.rev+'<span class="rw"> reviews</span>)</span></div>'+
+      '<div class="spr"><b>'+INR(price)+'</b>'+(off?'<s>'+INR(cmp)+'</s><span class="off">'+off+'% off</span>':'')+'</div></div>'+
+    (isOOS(h) ? notifyBtnHTML(h,'sbtn nfy') :
+      '<button class="sbtn" onclick="addToCart(\''+h+'\',typeof PV!==\'undefined\'?PV:0,1)">Add to cart</button>');
+  sa.classList.toggle('oos',isOOS(h));
+}
+function initPdp(){
+  var h=pdpHandle(); if(!h) return;
+  var add=q('.buyrow .add');
+  if(isOOS(h)){
+    add.setAttribute('data-notify',h); add.classList.add('nfy');
+    add.setAttribute('onclick',"notifyMe('"+h+"')");
+    if(!q('.stocknote')) add.parentNode.insertAdjacentHTML('beforebegin','<div class="stocknote"><span></span>Currently out of stock</div>');
+    var pr=q('.prow'); if(pr && !q('.prow .sol')) pr.insertAdjacentHTML('beforeend','<span class="sol">Sold out</span>');
+  }
+  paintSticky(typeof PV!=='undefined'?PV:0);
+  if(typeof window.pickPdp==='function' && !window.pickPdp._wrapped){
+    var orig=window.pickPdp;
+    window.pickPdp=function(i,b){ orig(i,b); paintSticky(i); };
+    window.pickPdp._wrapped=true;
+  }
+  paintNotify();
+}
+document.addEventListener('DOMContentLoaded',function(){ initPdp(); paintNotify(); paintAcct(); });
+
+
+/* ---------------- PDP: UGC video stories ----------------
+   Real content: set window.UGC['<product-handle>'] = [ {type:'youtube', id:'VIDEO_ID', user:'@handle'},
+     {type:'instagram', id:'REEL_CODE', user:'@handle', dur:20}, {type:'tiktok', id:'7300000000000000000', user:'@handle', dur:20},
+     {type:'mp4', src:'assets/ugc/clip.mp4', poster:'...', user:'@handle'} ]
+   Without it, sample stories are built from the product's own gallery so the flow can be reviewed. */
+window.UGC = window.UGC || {};
+var UG={list:[],i:0,h:null,t0:0,el:0,dur:6000,raf:0,paused:false,muted:true,ytReady:false};
+var PLAT={tiktok:'TikTok',instagram:'Instagram Reel',youtube:'YouTube Short',mp4:'Video',sample:'Sample'};
+function ugcList(h){
+  if(window.UGC[h]&&window.UGC[h].length) return window.UGC[h];
+  var imgs=qa('#thumbs img').map(function(x){return x.getAttribute('src');}); if(!imgs.length) imgs=[CAT[h].img];
+  var plats=['tiktok','instagram','youtube','instagram'];
+  return plats.map(function(pl,i){ return {type:'sample',plat:pl,img:imgs[i%imgs.length],user:'Creator '+(i+1),
+    cap:'Sample clip — replace with a real '+PLAT[pl]+' link',dur:6,anim:i%4}; });
+}
+function ugcBtn(){
+  var h=pdpHandle(), m=q('.mainimg'); if(!h||!m||q('.ugcbtn')) return;
+  var n=ugcList(h).length;
+  m.insertAdjacentHTML('beforeend','<button type="button" class="ugcbtn" onclick="ugcOpen(0)" aria-label="Play customer videos">'+
+    '<span class="ring"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="lb">Watch reviews<small>'+n+' videos</small></span></button>');
+}
+function ugcShell(){
+  if(q('#ugc')) return;
+  document.body.insertAdjacentHTML('beforeend',
+  '<div class="ugc" id="ugc" role="dialog" aria-modal="true" aria-label="Customer videos">'+
+   '<div class="ugbg" onclick="ugcClose()"></div>'+
+   '<button class="ugnav prev" onclick="ugcGo(-1)" aria-label="Previous video">&#8249;</button>'+
+   '<div class="stage" id="ugStage">'+
+     '<div class="bars" id="ugBars"></div>'+
+     '<div class="ughead"><span class="av" id="ugAv"></span><div class="who"><b id="ugUser"></b><span id="ugPlat"></span></div>'+
+       '<button class="ic" id="ugPause" onclick="ugcToggle()" aria-label="Pause"></button>'+
+       '<button class="ic" id="ugMute" onclick="ugcMute()" aria-label="Unmute"></button>'+
+       '<button class="ic x" onclick="ugcClose()" aria-label="Close">&times;</button></div>'+
+     '<div class="media" id="ugMedia"></div>'+
+     '<div class="tz l" onclick="ugcGo(-1)"></div><div class="tz r" onclick="ugcGo(1)"></div>'+
+     '<div class="cap" id="ugCap"></div>'+
+     '<div class="ugatc" id="ugAtc"></div>'+
+   '</div>'+
+   '<button class="ugnav next" onclick="ugcGo(1)" aria-label="Next video">&#8250;</button>'+
+  '</div>');
+  var st=q('#ugStage'), y0=null;
+  st.addEventListener('touchstart',function(e){ y0=e.touches[0].clientY; },{passive:true});
+  st.addEventListener('touchend',function(e){ if(y0!=null&&e.changedTouches[0].clientY-y0>110) ugcClose(); y0=null; });
+  document.addEventListener('keydown',function(e){ if(!q('.ugc.open')||q('#nModal.open')) return;
+    if(e.key==='ArrowRight') ugcGo(1); else if(e.key==='ArrowLeft') ugcGo(-1); else if(e.key===' '){ e.preventDefault(); ugcToggle(); } });
+  window.addEventListener('message',function(e){
+    if(!/youtube/.test(e.origin||'')) return; var d; try{ d=JSON.parse(e.data); }catch(x){ return; }
+    if(d&&d.info&&d.info.playerState===0) ugcGo(1);
+    if(d&&d.info&&d.info.duration&&UG.list[UG.i]&&UG.list[UG.i].type==='youtube') UG.dur=d.info.duration*1000;
+  });
+}
+var IC_PAUSE='<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>', IC_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" class="f"/></svg>';
+var IC_MUTED='<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" class="f"/><path d="M17 9l5 6M22 9l-5 6"/></svg>', IC_SOUND='<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" class="f"/><path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12"/></svg>';
+function ugcAtcHTML(){
+  var h=UG.h, p=CAT[h], vi=(typeof PV!=='undefined'?PV:0);
+  var price=p.prices[vi]!=null?p.prices[vi]:p.price, cmp=p.cmps&&p.cmps[vi]!=null?p.cmps[vi]:(vi===0?p.cmp:null);
+  var off=cmp&&cmp>price?Math.round((cmp-price)/cmp*100):0;
+  return '<img src="'+p.img+'" alt=""><div class="sx"><div class="t">'+p.title+'</div>'+
+    '<div class="r"><span class="st">&#9733;</span> '+ratingOf(h).toFixed(1)+' <span class="rc">('+p.rev+')</span></div>'+
+    '<div class="spr"><b>'+INR(price)+'</b>'+(off?'<s>'+INR(cmp)+'</s><span class="off">'+off+'% off</span>':'')+'</div></div>'+
+    (isOOS(h)? notifyBtnHTML(h,'sbtn nfy') : '<button class="sbtn" id="ugAdd" onclick="ugcAdd()">Add to cart</button>');
+}
+function ugcAdd(){
+  var vi=(typeof PV!=='undefined'?PV:0); addToCart(UG.h,vi,1,true);
+  var b=q('#ugAdd'); if(b){ b.classList.add('done'); b.innerHTML='&#10003; Added &middot; View bag'; b.onclick=function(){ ugcClose(); openCart(); }; }
+}
+function ugcOpen(i){
+  UG.h=pdpHandle(); if(!UG.h) return; ugcShell();
+  UG.list=ugcList(UG.h);
+  q('#ugBars').innerHTML=UG.list.map(function(){ return '<span><i></i></span>'; }).join('');
+  q('#ugAtc').innerHTML=ugcAtcHTML();
+  q('#ugc').classList.add('open'); document.body.classList.add('ugc-open'); document.body.style.overflow='hidden';
+  ugcShow(i||0);
+}
+function ugcClose(){
+  var u=q('#ugc'); if(!u) return; cancelAnimationFrame(UG.raf);
+  q('#ugMedia').innerHTML=''; u.classList.remove('open'); document.body.classList.remove('ugc-open'); document.body.style.overflow='';
+}
+function ugcGo(d){
+  var n=UG.i+d;
+  if(n<0) n=0;
+  if(n>=UG.list.length){ ugcClose(); return; }    /* after the last story the viewer closes */
+  ugcShow(n);
+}
+function ugcEmbed(s){
+  if(s.type==='youtube') return 'https://www.youtube.com/embed/'+s.id+'?autoplay=1&mute='+(UG.muted?1:0)+'&playsinline=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin='+encodeURIComponent(location.origin);
+  if(s.type==='instagram') return 'https://www.instagram.com/reel/'+s.id+'/embed/';
+  if(s.type==='tiktok') return 'https://www.tiktok.com/embed/v2/'+s.id;
+  return '';
+}
+function ugcShow(i){
+  cancelAnimationFrame(UG.raf); UG.i=i; UG.paused=false; UG.el=0;
+  var s=UG.list[i], md=q('#ugMedia'), stage=q('#ugStage');
+  qa('#ugBars i').forEach(function(b,k){ b.style.width = k<i?'100%':'0%'; });
+  q('#ugUser').textContent=s.user||''; q('#ugAv').textContent=(s.user||'?').replace('@','').charAt(0).toUpperCase();
+  var pl=s.plat||s.type; q('#ugPlat').textContent=PLAT[pl]||pl;
+  q('#ugCap').textContent=s.cap||''; q('#ugCap').hidden=!s.cap;
+  stage.classList.toggle('iframe', s.type==='youtube'||s.type==='instagram'||s.type==='tiktok');
+  stage.classList.remove('nomute');
+  UG.dur=(s.dur||(s.type==='sample'?6:20))*1000;
+  if(s.type==='mp4'){
+    md.innerHTML='<video playsinline autoplay '+(UG.muted?'muted ':'')+(s.poster?'poster="'+s.poster+'" ':'')+'src="'+s.src+'"></video>';
+    var v=md.querySelector('video');
+    v.addEventListener('ended',function(){ ugcGo(1); });
+    v.addEventListener('loadedmetadata',function(){ if(v.duration&&isFinite(v.duration)) UG.dur=v.duration*1000; });
+  } else if(s.type==='sample'){
+    md.innerHTML='<div class="smp a'+s.anim+'"><img src="'+s.img+'" alt=""></div><span class="smptag">Sample</span>';
+    stage.classList.add('nomute');
+  } else {
+    md.innerHTML='<iframe src="'+ugcEmbed(s)+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="'+(PLAT[s.type]||'Video')+'"></iframe>';
+    if(s.type==='youtube'){ var f=md.querySelector('iframe'); f.addEventListener('load',function(){ try{ f.contentWindow.postMessage('{"event":"listening","id":1}','*'); }catch(e){} }); }
+    else stage.classList.add('nomute');
+  }
+  paintUgCtl(); UG.t0=performance.now(); tick();
+}
+function tick(){
+  UG.raf=requestAnimationFrame(function(now){
+    if(!q('.ugc.open')) return;
+    var s=UG.list[UG.i], v=q('#ugMedia video'), pct;
+    if(v && v.duration){ pct=v.currentTime/v.duration; }
+    else { if(!UG.paused) UG.el+=now-UG.t0; UG.t0=now; pct=UG.el/UG.dur; if(pct>=1 && s.type!=='youtube'){ ugcGo(1); return; } }
+    var bar=qa('#ugBars i')[UG.i]; if(bar) bar.style.width=Math.min(100,pct*100)+'%';
+    tick();
+  });
+}
+function ytCmd(fn,args){ var f=q('#ugMedia iframe'); if(f&&UG.list[UG.i].type==='youtube') try{ f.contentWindow.postMessage(JSON.stringify({event:'command',func:fn,args:args||[]}),'*'); }catch(e){} }
+function ugcToggle(){
+  UG.paused=!UG.paused; var v=q('#ugMedia video');
+  if(v){ UG.paused? v.pause() : v.play(); }
+  ytCmd(UG.paused?'pauseVideo':'playVideo');
+  q('#ugStage').classList.toggle('paused',UG.paused); paintUgCtl();
+}
+function ugcMute(){
+  UG.muted=!UG.muted; var v=q('#ugMedia video'); if(v) v.muted=UG.muted;
+  ytCmd(UG.muted?'mute':'unMute'); paintUgCtl();
+}
+function paintUgCtl(){
+  q('#ugPause').innerHTML=UG.paused?IC_PLAY:IC_PAUSE; q('#ugPause').setAttribute('aria-label',UG.paused?'Play':'Pause');
+  q('#ugMute').innerHTML=UG.muted?IC_MUTED:IC_SOUND; q('#ugMute').setAttribute('aria-label',UG.muted?'Unmute':'Mute');
+}
+document.addEventListener('DOMContentLoaded',function(){ ugcBtn(); });
+
+/* ---------------- mobile sticky filter/sort ---------------- */
+var SORTLBL={feat:'Featured',lo:'Price: low to high',hi:'Price: high to low',rev:'Most reviewed',az:'A–Z'};
+function mountMfSticky(){
+  if(!q('.fbar .mfbtn')||q('.mfsticky')) return;
+  var fi='<svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+  var si='<svg viewBox="0 0 24 24"><path d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3"/></svg>';
+  q('#viewport').insertAdjacentHTML('beforeend',
+    '<div class="mfsticky" role="toolbar" aria-label="Filter and sort">'+
+    '<button type="button" onclick="openSheet(\'fSheet\')">'+fi+'<span class="tx">Filter<small id="mfF">All products</small></span><span class="dot" id="mfDot" hidden></span></button><i></i>'+
+    '<button type="button" onclick="openSheet(\'sSheet\')">'+si+'<span class="tx">Sort<small id="mfS">Featured</small></span></button></div>');
+  document.body.classList.add('hasmf');
+  function bnh(){ var b=q('.botnav'); var h=b&&b.offsetHeight; if(h) document.documentElement.style.setProperty('--bnh',h+'px'); }
+  bnh(); window.addEventListener('resize',bnh); window.addEventListener('load',bnh);
+  document.addEventListener('click',function(){ setTimeout(paintMf,0); });
+  var s=q('#sortSel'); if(s) s.addEventListener('change',paintMf);
+}
+function paintMf(){
+  var f=window.FILT||'all', s=(q('#sortSel')||{}).value||window.SORT||'feat';
+  var fl=q('#mfF'), sl=q('#mfS'), d=q('#mfDot'); if(!fl) return;
+  var on=qa('.sheet .chip.on')[0];
+  fl.textContent = f==='all' ? 'All products' : (on ? on.textContent : f);
+  if(d) d.hidden = (f==='all');
+  sl.textContent = SORTLBL[s]||s;
+}
+
 /* ---------------- boot ---------------- */
 function renderChrome(cur){
   var vp = q('#viewport');
@@ -371,13 +692,16 @@ function renderChrome(cur){
   vp.insertAdjacentHTML('afterbegin', headerHTML());
   vp.insertAdjacentHTML('beforeend', footerHTML());
   document.body.insertAdjacentHTML('beforeend',
-    '<div id="panels"><div class="ovl" id="ovl" onclick="closeAll()"></div>'+drawerHTML()+searchHTML()+cartHTML()+modalHTML()+'</div>');
+    '<div id="panels"><div class="ovl" id="ovl" onclick="closeAll()"></div>'+drawerHTML()+searchHTML()+cartHTML()+modalHTML()+
+    '<div class="modal nmodal" id="nModal" role="dialog" aria-modal="true"><button class="mclose" onclick="closeNotify()">&times;</button><div class="nbody"></div></div>'+
+    '<div class="rmmodal" id="rmModal" role="alertdialog" aria-modal="true" aria-labelledby="rmTitle"><div class="rmbg" onclick="closeRemove()"></div><div class="rmb"></div></div>'+'</div>');
   vp.insertAdjacentHTML('beforeend', botnavHTML());
   var pn=q('#panels');
   qa('.sheet').forEach(function(s){ pn.appendChild(s); });
   try{ if(localStorage.getItem('dg_vp')==='1') setVP(1); }catch(e){}
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeAll(); });
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape') return; if(q('#rmModal.open')){ closeRemove(); return; } if(q('.ugc.open')&&!q('#nModal.open')){ ugcClose(); return; } closeAll(); });
   paintCart(); paintWish();
+  mountMfSticky();
   setInterval(function(){ annStep(1); }, 4200);
   rotatePlaceholder(); setInterval(rotatePlaceholder, 2600);
 }
