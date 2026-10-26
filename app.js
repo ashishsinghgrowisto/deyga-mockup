@@ -289,32 +289,44 @@ function paintWish(){
 /* ---------------- variant modal ---------------- */
 var MSTATE={h:null,v:0};
 function modalHTML(){
-  return '<div class="modal" id="vModal"><button class="mclose" onclick="closeModal()">&times;</button><div id="vBody"></div></div>';
+  return '<div class="modal" id="vModal" role="dialog" aria-modal="true" aria-label="Choose an option"><span class="vgrip" aria-hidden="true"></span><button class="mclose" onclick="closeModal()" aria-label="Close">&times;</button><div id="vBody"></div></div>';
 }
-function openQuick(h){
+function openQuick(h,vi){
   var p=CAT[h]; if(!p) return;
   if(isOOS(h)){ notifyMe(h); return; }
-  MSTATE={h:h,v:0};
+  vi = (vi!=null && p.opts[vi]!=null) ? vi : 0;
+  MSTATE={h:h,v:vi};
   q('#vBody').innerHTML =
     '<div class="mh"><img src="'+p.img+'" alt=""><div><h3>'+p.title+'</h3>'+
     '<div class="rate" style="margin:7px 0"><span class="stars">'+stars()+'</span><span>'+p.rev+' reviews</span></div>'+
-    '<div class="price"><b id="vPrice">'+INR(p.prices[0])+'</b></div></div></div>'+
+    '<div class="price"><b id="vPrice">'+INR(p.prices[vi])+'</b></div></div></div>'+
     '<div class="mb"><h6>'+(p.optname||'Select options')+'</h6><div class="opts" id="vOpts">'+
       p.opts.map(function(o,i){
         var cmp=p.cmps[i], save = cmp&&cmp>p.prices[i] ? '<span class="os">Save '+INR(cmp-p.prices[i])+'</span>' : '';
-        return '<button class="opt'+(i===0?' on':'')+'" onclick="pickVar('+i+',this)"><span class="ol">'+o+(i===1?'<span class="tagbest">BEST DEAL</span>':'')+'</span><span style="text-align:right"><span class="op">'+INR(p.prices[i])+'</span>'+(cmp?' <s style="color:#999;font-size:12px">'+INR(cmp)+'</s>':'')+'<br>'+save+'</span></button>';
+        return '<button class="opt'+(i===vi?' on':'')+'" onclick="pickVar('+i+',this)"><span class="ol">'+o+(i===1?'<span class="tagbest">BEST DEAL</span>':'')+'</span><span style="text-align:right"><span class="op">'+INR(p.prices[i])+'</span>'+(cmp?' <s style="color:#999;font-size:12px">'+INR(cmp)+'</s>':'')+'<br>'+save+'</span></button>';
       }).join('')+'</div>'+
-      '<button class="co" style="margin-top:18px" onclick="addToCart(MSTATE.h,MSTATE.v,1);closeModal()">Add to bag</button>'+
+      '<button class="co" style="margin-top:18px" onclick="quickAdd()">Add to cart</button>'+
       '<a class="viewfull" href="product-'+h+'.html">View full product details</a>'+
     '</div>';
   q('#vModal').classList.add('open'); showOvl(true);
+}
+function quickAdd(){
+  var inViewer=!!q('.ugc.open');
+  closeModal();
+  if(inViewer){ addToCart(MSTATE.h,MSTATE.v,1,true); document.body.style.overflow='hidden';
+    var b=q('#ugAdd'); if(b){ b.classList.add('done'); b.innerHTML='&#10003; Added &middot; View bag'; b.onclick=function(){ ugcClose(); openCart(); }; }
+    return; }
+  if(window.PV!==undefined && pdpHandle()===MSTATE.h && typeof window.pickPdp==='function'){
+    var ob=qa('#pdpOpts .opt')[MSTATE.v]; if(ob) window.pickPdp(MSTATE.v,ob);   /* keep the PDP in sync with the chosen size */
+  }
+  addToCart(MSTATE.h,MSTATE.v,1);
 }
 function pickVar(i,btn){
   MSTATE.v=i;
   qa('#vOpts .opt').forEach(function(b){b.classList.remove('on');}); btn.classList.add('on');
   var p=CAT[MSTATE.h]; q('#vPrice').textContent=INR(p.prices[i]);
 }
-function closeModal(){ q('#vModal').classList.remove('open'); showOvl(false); }
+function closeModal(){ q('#vModal').classList.remove('open'); showOvl(false); if(q('.ugc.open')) document.body.style.overflow='hidden'; }
 
 /* ---------------- product card renderer ---------------- */
 function badgeClass(b){
@@ -492,9 +504,10 @@ function paintSticky(vi){
     '<img src="'+p.img+'" alt="'+p.title+'">'+
     '<div class="sx"><div class="t">'+p.title+'</div>'+
       '<div class="r"><span class="st">&#9733;</span> '+r+' <span class="rc">('+p.rev+'<span class="rw"> reviews</span>)</span></div>'+
-      '<div class="spr"><b>'+INR(price)+'</b>'+(off?'<s>'+INR(cmp)+'</s><span class="off">'+off+'% off</span>':'')+'</div></div>'+
+      '<div class="spr"><b id="stickyPrice">'+INR(price)+'</b>'+(off?'<s>'+INR(cmp)+'</s><span class="off">'+off+'% off</span>':'')+'</div></div>'+
     (isOOS(h) ? notifyBtnHTML(h,'sbtn nfy') :
-      '<button class="sbtn" onclick="addToCart(\''+h+'\',typeof PV!==\'undefined\'?PV:0,1)">Add to cart</button>');
+      (p.opts&&p.opts.length>1 ? '<button class="sbtn" onclick="openQuick(\''+h+'\',typeof PV!==\'undefined\'?PV:0)">Add to cart</button>'
+        : '<button class="sbtn" onclick="addToCart(\''+h+'\',0,1)">Add to cart</button>'));
   sa.classList.toggle('oos',isOOS(h));
 }
 function initPdp(){
@@ -580,7 +593,9 @@ function ugcAtcHTML(){
     (isOOS(h)? notifyBtnHTML(h,'sbtn nfy') : '<button class="sbtn" id="ugAdd" onclick="ugcAdd()">Add to cart</button>');
 }
 function ugcAdd(){
-  var vi=(typeof PV!=='undefined'?PV:0); addToCart(UG.h,vi,1,true);
+  var vi=(typeof PV!=='undefined'?PV:0), p=CAT[UG.h];
+  if(p&&p.opts&&p.opts.length>1){ openQuick(UG.h,vi); return; }
+  addToCart(UG.h,vi,1,true);
   var b=q('#ugAdd'); if(b){ b.classList.add('done'); b.innerHTML='&#10003; Added &middot; View bag'; b.onclick=function(){ ugcClose(); openCart(); }; }
 }
 function ugcOpen(i){
@@ -658,6 +673,60 @@ function paintUgCtl(){
   q('#ugMute').innerHTML=UG.muted?IC_MUTED:IC_SOUND; q('#ugMute').setAttribute('aria-label',UG.muted?'Unmute':'Mute');
 }
 document.addEventListener('DOMContentLoaded',function(){ ugcBtn(); });
+
+
+/* ---------------- PDP: sticky section navigation ----------------
+   Appears once the shopper scrolls past the first fold, docked directly under the
+   header (absolutely positioned relative to it, so nothing on the page shifts). */
+var PNAV=null;
+function initPdpNav(){
+  var nav=q('#subnav'), hdr=q('.hdr'), h=pdpHandle(); if(!nav||!hdr||!h) return;
+  var wo=q('.whatsout'); var woSec=wo&&wo.closest('section'); if(woSec&&!woSec.id) woSec.id='whatsout';
+  var p=CAT[h];
+  var defs=[['overview','Overview'],['details','Details'],['whatsout','What&rsquo;s Out'],['faqs','FAQs'],
+            ['reviews','Reviews'+(p&&p.rev?' <span class="ct">('+p.rev+')</span>':'')],['similar','You May Like']];
+  PNAV=defs.filter(function(d){ return document.getElementById(d[0]); });
+  nav.querySelector('.in').innerHTML=PNAV.map(function(d){
+    return '<a href="#'+d[0]+'" data-sec="'+d[0]+'" onclick="pnavJump(event,\''+d[0]+'\')">'+d[1]+'</a>'; }).join('');
+  nav.classList.add('pnav'); nav.setAttribute('aria-label','Product page sections'); nav.setAttribute('role','navigation');
+  nav.style.top='';
+  hdr.appendChild(nav);                          /* docked to the header */
+  if(typeof window.onScroll==='function') window.removeEventListener('scroll',window.onScroll);
+  window.jump=pnavJump;
+  window.addEventListener('scroll',pnavScroll,{passive:true});
+  window.addEventListener('resize',pnavScroll);
+  pnavScroll();
+}
+function pnavJump(e,id){
+  if(e) e.preventDefault();
+  var t=document.getElementById(id), nav=q('#subnav'); if(!t) return;
+  nav.classList.add('vis');                     /* measure with the bar showing */
+  var y=t.getBoundingClientRect().top+window.scrollY-nav.getBoundingClientRect().bottom+1;
+  window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+}
+var PN_ACT=null;
+function pnavScroll(){
+  var nav=q('#subnav'), hdr=q('.hdr'); if(!nav||!hdr) return;
+  /* sticky add-to-cart (was handled by the page's own scroll handler) */
+  var buy=q('.buyrow'), sa=q('#stickyAtc');
+  if(buy&&sa) sa.classList.toggle('show', buy.getBoundingClientRect().bottom<0);
+  /* show once the first fold has scrolled away */
+  var hb=hdr.getBoundingClientRect().bottom;
+  var past=window.scrollY > Math.max(240, window.innerHeight - hb);
+  nav.classList.toggle('vis',past);
+  /* highlight the section currently under the bar */
+  var line=hb+nav.offsetHeight+24, act=PNAV&&PNAV[0][0];
+  (PNAV||[]).forEach(function(d){ var el=document.getElementById(d[0]); if(el&&el.getBoundingClientRect().top<=line) act=d[0]; });
+  if((window.innerHeight+window.scrollY)>=document.documentElement.scrollHeight-4 && PNAV) act=PNAV[PNAV.length-1][0];
+  if(act!==PN_ACT){
+    PN_ACT=act;
+    qa('#subnav a').forEach(function(a){
+      var on=a.getAttribute('data-sec')===act; a.classList.toggle('on',on);
+      if(on){ var p=a.parentNode; if(p.scrollWidth>p.clientWidth) p.scrollTo({left:a.offsetLeft-p.clientWidth/2+a.clientWidth/2,behavior:'smooth'}); }
+    });
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){ initPdpNav(); });
 
 /* ---------------- mobile sticky filter/sort ---------------- */
 var SORTLBL={feat:'Featured',lo:'Price: low to high',hi:'Price: high to low',rev:'Most reviewed',az:'A–Z'};
