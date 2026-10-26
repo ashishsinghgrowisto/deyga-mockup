@@ -90,7 +90,7 @@ function headerHTML(){
        return '<a href="'+n.href+'"'+(n.hot?' class="hot"':'')+'>'+n.label+'</a>';}).join('')+'</div>'+
     '<div class="hdr-quick">'+quick+'</div>'+
   '</div>'+
-  '<a class="rewards" href="#" onclick="toast(\'Rewards is not part of this mockup\');return false">'+
+  '<a class="rewards" href="#" onclick="openTiers();return false">'+
     '<span>&#127873;</span>Rewards</a>';
 }
 
@@ -380,7 +380,7 @@ var BOTNAV=[
 function botnavHTML(){
   return '<nav class="botnav" aria-label="Mobile navigation"><ul>'+BOTNAV.map(function(b,i){
     var act = b[1].indexOf('javascript')===0;
-    var on = i===1 ? ' onclick="openCart();return false"' : (b[0]==='Account' ? ' onclick="openAccount();return false"' : (i>2 ? ' onclick="toast(\''+b[0]+' is not part of this mockup\');return false"' : ''));
+    var on = i===1 ? ' onclick="openCart();return false"' : (b[0]==='Account' ? ' onclick="openAccount();return false"' : b[0]==='Rewards' ? ' onclick="openTiers();return false"' : (i>2 ? ' onclick="toast(\''+b[0]+' is not part of this mockup\');return false"' : ''));
     return '<li'+(b[3]?' class="mid"':'')+'><a href="'+b[1]+'"'+on+'>'+
       '<span class="bi">'+b[2]+(i===1?'<span class="badge" id="botCartBadge" hidden>0</span>':'')+'</span>'+
       '<span class="bl">'+b[0]+'</span></a></li>';
@@ -468,23 +468,27 @@ function openAccount(){
   var u=getUser(), m=q('#nModal');
   m.querySelector('.nbody').innerHTML = u ?
     '<div class="mb acct"><h3>My account</h3><p>Signed in as <b>'+u.email+'</b></p>'+
+    (function(){ var t=tierOf(userSpent()); return '<div class="acctier" style="--tc:'+(t?t.color:'#9a8f80')+'"><span class="tmed">'+(t?t.name.charAt(0):'&#9733;')+'</span><div><b>'+(t?t.name+' member':'Deyga Rewards member')+'</b><span>Lifetime spend '+INR(userSpent())+(t?' &middot; '+t.pct+'% off every order':'')+'</span></div></div>'; })()+
+    demoTierHTML()+
     '<p class="nalt">Back-in-stock alerts on this account: '+notifyList().filter(function(n){return n.e===u.email;}).length+'</p>'+
     '<button class="co ghost" onclick="signOut()">Sign out</button></div>' :
-    '<form class="mb acct nform" novalidate onsubmit="return signIn(event)"><h3>Sign in</h3>'+
-    '<p class="nlead">Mockup sign-in: any valid email works, no password is stored.</p>'+
+    '<form class="mb acct nform" novalidate onsubmit="return signIn(event)"><h3>Sign in or create an account</h3>'+
+    '<p class="nlead">Members save up to 15% on every order with Deyga Rewards. Mockup sign-in: any valid email works, no password is stored.</p>'+
     '<label for="aEmail">Email address</label><input id="aEmail" type="email" autocomplete="email" placeholder="you@example.com" required>'+
     '<div class="nerr" id="aErr" hidden>Please enter a valid email address</div>'+
-    '<button class="co" type="submit">Sign in</button></form>';
+    demoTierHTML()+
+    '<button class="co" type="submit">Continue</button></form>';
   m.classList.add('open'); showOvl(true);
 }
 function signIn(e){
   e.preventDefault();
   var i=q('#aEmail'), v=(i.value||'').trim();
   if(!EMAIL_RE.test(v)){ q('#aErr').hidden=false; i.classList.add('bad'); return false; }
-  writeLS('dg_user',{email:v}); closeNotify(); paintNotify(); paintAcct(); toast('Signed in as '+v);
+  var ds=q('#demoTier'); writeLS('dg_user',{email:v,spent:Number(ds?ds.value:12450)}); closeNotify(); paintNotify(); paintAcct(); paintRewards();
+  var t=tierOf(userSpent()); toast(t?'Welcome back — your '+t.name+' discount is applied':'Signed in as '+v);
   return false;
 }
-function signOut(){ try{ localStorage.removeItem('dg_user'); }catch(e){} closeNotify(); paintNotify(); paintAcct(); toast('Signed out'); }
+function signOut(){ try{ localStorage.removeItem('dg_user'); }catch(e){} closeNotify(); paintNotify(); paintAcct(); paintRewards(); toast('Signed out'); }
 function paintAcct(){ var u=getUser(); qa('[aria-label="Account"]').forEach(function(a){ a.classList.toggle('signedin',!!u); a.title = u ? 'Signed in as '+u.email : 'Sign in'; }); }
 
 /* ---------------- PDP: richer sticky add-to-cart ---------------- */
@@ -728,6 +732,88 @@ function pnavScroll(){
 }
 document.addEventListener('DOMContentLoaded',function(){ initPdpNav(); });
 
+
+/* ---------------- Deyga Rewards tiers (mirrors deyga.in/pages/rewards) ----------------
+   Source: rewards.deyga.in/api/tier/get/active — tiers by lifetime spend. */
+var TIERS=[
+ {name:'Bronze',  from:2000,  to:4999,   pct:5,   color:'#b25631', perks:['Flat 5% off on all your orders']},
+ {name:'Silver',  from:5000,  to:9999,   pct:7.5, color:'#8f98a1', perks:['Flat 7.5% off on all your orders','Early access to launches & sales']},
+ {name:'Gold',    from:10000, to:24999,  pct:10,  color:'#e0a800', perks:['Flat 10% off on all your orders','Early access to launches & sales','Exclusive customer support']},
+ {name:'Diamond', from:25000, to:49999,  pct:12.5,color:'#b46fbd', perks:['Flat 12.5% off on all your orders','Early access to launches & sales','Exclusive customer support','Personal skincare advice']},
+ {name:'Platinum',from:50000, to:Infinity,pct:15, color:'#6f97ab', perks:['Flat 15% off on all your orders','Early access to launches & sales','Exclusive customer support','Personal skincare advice']}
+];
+var DEMO_SPEND=[['Start (no tier yet)',1250],['Bronze',3200],['Silver',6800],['Gold',12450],['Diamond',31000],['Platinum',58000]];
+function userSpent(){ var u=getUser(); return u ? (u.spent!=null?Number(u.spent):12450) : 0; }
+function tierOf(s){ for(var i=TIERS.length-1;i>=0;i--){ if(s>=TIERS[i].from) return TIERS[i]; } return null; }
+function nextTierOf(s){ for(var i=0;i<TIERS.length;i++){ if(s<TIERS[i].from) return TIERS[i]; } return null; }
+function demoTierHTML(){
+  var s=userSpent()||12450;
+  return '<label class="dtl" for="demoTier">Preview as tier <small>(mockup only)</small></label>'+
+    '<select id="demoTier" class="dts"'+(getUser()?' onchange="setDemoTier(this.value)"':'')+'>'+
+    DEMO_SPEND.map(function(d){ return '<option value="'+d[1]+'"'+(d[1]===s?' selected':'')+'>'+d[0]+' &middot; '+INR(d[1])+' spent</option>'; }).join('')+'</select>';
+}
+function setDemoTier(v){ var u=getUser(); if(!u) return; u.spent=Number(v); writeLS('dg_user',u); paintRewards(); openAccount(); var t=tierOf(u.spent); toast(t?'Previewing as '+t.name+' member':'Previewing with no tier yet'); }
+function tmed(t,big){ return '<span class="tmed'+(big?' big':'')+'" style="--tc:'+t.color+'">'+t.name.charAt(0)+'</span>'; }
+function pdpPriceNow(){
+  var h=pdpHandle(), p=h&&CAT[h]; if(!p) return 0;
+  var vi=(typeof PV!=='undefined'?PV:0); return p.prices[vi]!=null?p.prices[vi]:p.price;
+}
+function rewardsHTML(){
+  var u=getUser(), price=pdpPriceNow(), top=TIERS[TIERS.length-1];
+  if(!u){
+    return '<div class="rwhead"><span class="rwic">&#127873;</span><div><b>Members save up to '+top.pct+'% on every order</b>'+
+      '<span>Pay as low as <strong>'+INR(price*(1-top.pct/100))+'</strong> for this with Deyga Rewards</span></div></div>'+
+      '<div class="rwladder">'+TIERS.map(function(t){ return '<span class="rwstep" style="--tc:'+t.color+'">'+tmed(t)+'<em>'+t.pct+'%</em><small>'+t.name+'</small></span>'; }).join('')+'</div>'+
+      '<div class="rwcta"><button class="rwbtn" onclick="openAccount()">Sign in / Sign up</button><a href="#" onclick="openTiers();return false">See all member perks &rarr;</a></div>';
+  }
+  var s=userSpent(), t=tierOf(s), n=nextTierOf(s);
+  var prog=n ? Math.max(4,Math.min(100,((s-(t?t.from:0))/(n.from-(t?t.from:0)))*100)) : 100;
+  var head = t ?
+    '<div class="rwhead">'+tmed(t,1)+'<div><b>Your '+t.name+' price: '+INR(price*(1-t.pct/100))+'</b>'+
+      '<span><s>'+INR(price)+'</s> &middot; '+t.pct+'% member discount applied at checkout</span></div></div>'+
+    '<ul class="rwperks">'+t.perks.map(function(x){ return '<li>'+x+'</li>'; }).join('')+'</ul>'
+    :
+    '<div class="rwhead"><span class="rwic">&#127873;</span><div><b>You&rsquo;re a Deyga Rewards member</b>'+
+      '<span>Unlock '+n.name+' ('+n.pct+'% off) after '+INR(n.from)+' of lifetime orders</span></div></div>';
+  var bar = n ?
+    '<div class="rwprog"><div class="rwbar"><i style="width:'+prog+'%;background:'+(t?t.color:'#9a8f80')+'"></i></div>'+
+    '<p>Spend <b>'+INR(n.from-s)+'</b> more to reach <b style="color:'+n.color+'">'+n.name+'</b> &mdash; '+n.pct+'% off'+(function(){ var ex=n.perks.slice(1).filter(function(x){ return !(t&&t.perks.indexOf(x)>-1); }); return ex.length?' + '+ex[0].toLowerCase():''; })()+'</p></div>'
+    : '<div class="rwprog"><p>You&rsquo;re at our top tier &mdash; thank you for being with us.</p></div>';
+  return head+bar+'<div class="rwcta"><a href="#" onclick="openTiers();return false">View all tier benefits &rarr;</a></div>';
+}
+function paintRewards(){
+  var box=q('#rwBox');
+  if(!box){ var ob=q('.pinfo .offbox'); if(!ob||!pdpHandle()) return; ob.insertAdjacentHTML('afterend','<div class="rwbox" id="rwBox"></div>'); box=q('#rwBox'); }
+  var u=getUser(), t=u&&tierOf(userSpent());
+  box.className='rwbox'+(u?' in':' guest'); box.style.setProperty('--tc', t?t.color:'#80542c');
+  box.innerHTML=rewardsHTML();
+}
+function openTiers(){
+  qa('.modal.open,.sheet.open').forEach(function(x){x.classList.remove('open');});
+  var u=getUser(), s=userSpent(), cur=u&&tierOf(s), price=pdpPriceNow();
+  var m=q('#tModal');
+  m.querySelector('.tbody').innerHTML=
+    '<div class="thd"><h3>Deyga Rewards</h3><p>'+(u?(cur?'You&rsquo;re a <b style="color:'+cur.color+'">'+cur.name+'</b> member &middot; lifetime spend '+INR(s):'Lifetime spend '+INR(s)+' &middot; your first tier unlocks at '+INR(TIERS[0].from)):'Unlock bigger savings the more you shop. Tiers are based on your lifetime spend.')+'</p></div>'+
+    '<div class="tlist">'+TIERS.map(function(t){
+      var me=cur&&cur.name===t.name, done=u&&s>=t.from;
+      return '<div class="trow'+(me?' me':'')+(done&&!me?' done':'')+'" style="--tc:'+t.color+'">'+tmed(t,1)+
+        '<div class="tinfo"><div class="ttl"><b>'+t.name+'</b>'+(me?'<span class="you">Your tier</span>':done?'<span class="ok">Unlocked</span>':'')+
+        '<span class="tpct">'+t.pct+'% off</span></div>'+
+        '<small>'+(t.to===Infinity?INR(t.from)+'+ lifetime spend':INR(t.from)+' &ndash; '+INR(t.to)+' lifetime spend')+'</small>'+
+        '<ul>'+t.perks.map(function(x){ return '<li>'+x+'</li>'; }).join('')+'</ul>'+
+        (price?'<em class="tex">This product at '+t.name+': <b>'+INR(price*(1-t.pct/100))+'</b></em>':'')+
+        '</div></div>';
+    }).join('')+'</div>'+
+    (u?'<button class="co ghost" onclick="closeTiers()">Keep shopping</button>'
+      :'<button class="co" onclick="closeTiers();openAccount()">Sign in / Sign up to start saving</button>');
+  m.classList.add('open'); showOvl(true);
+}
+function closeTiers(){ q('#tModal').classList.remove('open'); showOvl(false); if(q('.ugc.open')) document.body.style.overflow='hidden'; }
+document.addEventListener('DOMContentLoaded',function(){
+  paintRewards();
+  if(typeof window.pickPdp==='function'){ var o=window.pickPdp; window.pickPdp=function(i,b){ o(i,b); paintRewards(); }; window.pickPdp._wrapped=true; }
+});
+
 /* ---------------- mobile sticky filter/sort ---------------- */
 var SORTLBL={feat:'Featured',lo:'Price: low to high',hi:'Price: high to low',rev:'Most reviewed',az:'A–Z'};
 function mountMfSticky(){
@@ -763,6 +849,7 @@ function renderChrome(cur){
   document.body.insertAdjacentHTML('beforeend',
     '<div id="panels"><div class="ovl" id="ovl" onclick="closeAll()"></div>'+drawerHTML()+searchHTML()+cartHTML()+modalHTML()+
     '<div class="modal nmodal" id="nModal" role="dialog" aria-modal="true"><button class="mclose" onclick="closeNotify()">&times;</button><div class="nbody"></div></div>'+
+    '<div class="modal tmodal" id="tModal" role="dialog" aria-modal="true" aria-label="Deyga Rewards tiers"><span class="vgrip" aria-hidden="true"></span><button class="mclose" onclick="closeTiers()" aria-label="Close">&times;</button><div class="tbody"></div></div>'+
     '<div class="rmmodal" id="rmModal" role="alertdialog" aria-modal="true" aria-labelledby="rmTitle"><div class="rmbg" onclick="closeRemove()"></div><div class="rmb"></div></div>'+'</div>');
   vp.insertAdjacentHTML('beforeend', botnavHTML());
   var pn=q('#panels');
