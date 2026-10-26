@@ -1,0 +1,50 @@
+name: Seed repo from current Vercel production
+on:
+  push:
+    paths: ['.github/workflows/seed-from-vercel.yml']
+permissions:
+  contents: write
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the deployed site
+        run: |
+          set -euo pipefail
+          BASE=https://deyga-mockup.vercel.app
+          curl -sSf "$BASE/index.html" -o index.html
+          grep -oE 'href="[^"#:]+\.html"' index.html | sed 's/href="//;s/"//' | sort -u > /tmp/pages.txt
+          for p in $(cat /tmp/pages.txt); do [ -f "$p" ] || curl -sSf "$BASE/$p" -o "$p"; done
+          curl -sSf "$BASE/app.js" -o app.js
+          curl -sSf "$BASE/styles.css" -o styles.css
+          cat *.html app.js styles.css | grep -oE '(assets|fonts)/[A-Za-z0-9_.-]+\.(webp|png|jpg|jpeg|gif|svg|ico|woff2|woff|mp4)' | sort -u > /tmp/media.txt
+          mkdir -p assets fonts
+          while read f; do curl -sSf "$BASE/$f" -o "$f"; done < /tmp/media.txt
+          cat > vercel.json <<'JSON'
+          {
+            "cleanUrls": false,
+            "trailingSlash": false,
+            "redirects": [{ "source": "/", "destination": "/index.html", "permanent": false }],
+            "headers": [
+              { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+              { "source": "/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+            ]
+          }
+          JSON
+          sed -i 's/^          //' vercel.json
+      - name: Verify byte-identical to the Vercel deployment
+        run: |
+          set -euo pipefail
+          test "$(sha1sum vercel.json | cut -c1-40)" = c4e718cf4cd8d068fc037bb3769def39fcae119d
+          find . -path ./.git -prune -o -path ./.github -prune -o -type f ! -name vercel.json -print | sed 's|^\./||' | LC_ALL=C sort | while read f; do echo "$f $(sha1sum "$f" | cut -c1-40)"; done > /tmp/list.txt
+          wc -l < /tmp/list.txt
+          test "$(sha256sum < /tmp/list.txt | cut -c1-64)" = 6e103ec5f4858bcf6f3605d9de5bfd087d7791bebefd54576f270a21620f3aa3
+      - name: Commit the site and remove this workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -q .github/workflows/seed-from-vercel.yml
+          git add -A
+          git commit -q -m "Seed: exact copy of the Vercel production deployment (642 files)" -m "Byte-verified against deployment dpl_GDkFyAwi6TeWALw2DW8zudmG1FgK (SHA-1 of every file)."
+          git push origin HEAD:main
