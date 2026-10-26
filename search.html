@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Search — Deyga Organics</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="assets/a31acb92d42bea960429691a5b6734d9.webp">
+
+</head><body>
+<div id="viewport">
+<div class="wrap" style="padding-top:34px">
+<h1 style="font-size:32px;text-align:center;margin-bottom:18px">Search</h1>
+<form class="sbar" onsubmit="return doSearch(event)"><input id="sq" placeholder="Search for products, concerns…" autocomplete="off"><button>Search</button></form>
+<div style="text-align:center;margin:20px 0 6px"><div class="chips" style="justify-content:center" id="sugg"></div></div>
+<div class="crumb" id="sinfo" style="text-align:center"></div>
+<div class="grid" id="sGrid"></div><div id="sEmpty"></div>
+<div style="margin-top:50px;padding-bottom:40px"><h2 class="sec-title" style="font-size:22px;margin-bottom:14px">Trending right now</h2><div class="grid" id="sRec"></div></div>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+window.COLIMG = {"skincare-bestsellers": "assets/fd80acc0adc9f8f0a28f936e63b89d67.webp", "best-sellers": "assets/ddaea0d99b2c350041c9929cd9c7edb3.webp", "hair-care-view-all": "assets/da12a089d313ed345be5ebbd3d296052.webp", "face": "assets/f5f8bf7d00426fa013144f36b5ff45e4.webp", "lip-care": "assets/2e0eb5fed74939f9b64743ba63f94bd3.webp", "combo": "assets/16783c7630f45068d59ff332f079cfc3.webp", "cosmetics": "assets/3ce4ceb0f188c0765dea6c6b3d63fcb1.webp", "eye-care": "assets/d443772d19400d9b358a658a367b52da.webp", "body-care-view-all": "assets/45114d5f3db46df3b9d6091602322575.webp", "travel-minis": "assets/9153d5055296aba3ae406b4d2f35c774.webp", "skin-serum": "assets/b33bc4cf09a58b2bf4980ec084e45fab.webp", "toner": "assets/2b8d4a50ee1dc9232f6df6d16d320e0e.webp", "face-wash": "assets/c269d36ef9e97d1d55f3563fb40574fc.webp", "face-scrub": "assets/7b4012932dedcc2bf19cc4a783c1e45c.webp", "face-packs-masks": "assets/252afad4de64f240387dd68da2eca9b4.webp", "face-cream-sunscreen": "assets/9866bb504c3492320690852baf4e5dcb.webp", "oral-care": "assets/f8a4b75eba398f6d407e9cf9dc44e234.webp", "shampoo-conditioner": "assets/a4debcdc5efb811e2a69b7340dc41a14.webp", "hair-oil": "assets/1465d259d128d6ca803f7f8ee318ab26.webp", "combs": "assets/a2318e4bc8516c0583c38f7d32ff1f12.webp", "handmade-soap": "assets/3876fe99ce18d4bc405d89d139ee80ad.webp", "body-butter": "assets/aa08ed92f9ae888179cb2558963a6894.webp", "body-lotion-sunscreen": "assets/e8fffb8a77ed8c3f0501116488f22ce4.webp", "body-wash": "assets/fa1aa43a4eb7ed448c105a656df55e19.webp", "scrub": "assets/f18188bf87cae9d6586d47850b618ebb.webp", "foot-care": "assets/1de9121ea4448be8778b95f306d0ac96.webp", "powder": "assets/d44e41828fc89c60af4252b14cf01658.webp", "deo": "assets/72bd0a56a95cbad2e4e7427c0a45ffaa.webp", "baby-care": "assets/59a31b0f745485b35b3a9d194f086a76.webp", "gifting": "assets/9ff11f0fabd198fcb44919010c64068e.webp"};
+renderChrome("search.html");
+
+var SUG=['Lip Balm','Aloe Vera','Hair Oil','Serum','Shampoo','Face Wash','Combo','Under Eye','Body Butter','Minis'];
+document.getElementById('sugg').innerHTML=SUG.map(function(s){return '<button class="chip" onclick="run(\''+s+'\')">'+s+'</button>';}).join('');
+function run(q){document.getElementById('sq').value=q;search(q);history.replaceState(null,'','search.html?q='+encodeURIComponent(q));}
+function doSearch(e){e.preventDefault();run(document.getElementById('sq').value.trim());return false;}
+function search(q){
+  var info=document.getElementById('sinfo');
+  if(!q){info.textContent='';renderGrid('sGrid',[]);document.getElementById('sEmpty').innerHTML='';return;}
+  var ql=q.toLowerCase();
+  var res=Object.keys(CAT).filter(function(h){return (CAT[h].title+' '+(CAT[h].sub||'')).toLowerCase().indexOf(ql)>-1;});
+  info.innerHTML=res.length? res.length+' results for &ldquo;'+q+'&rdquo;' : '';
+  renderGrid('sGrid',res);
+  document.getElementById('sEmpty').innerHTML=res.length?'':'<div class="empty"><b>No matches for &ldquo;'+q+'&rdquo;</b>Try a broader term like &ldquo;serum&rdquo; or &ldquo;oil&rdquo;.</div>';
+}
+renderGrid('sRec',["beetroot-lip-balm-stick", "aloe-vera-gel", "deyga-100-plant-based-hair-color-black", "rice-water-shampoo"]);
+var qp=new URLSearchParams(location.search).get('q')||'';
+if(qp){document.getElementById('sq').value=qp;search(qp);}
+
+</script>
+</body></html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deodorants — Deyga Organics</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="assets/a31acb92d42bea960429691a5b6734d9.webp">
+
+</head><body>
+<div id="viewport">
+
+<div class="wrap"><div class="crumb"><a href="home.html">Home</a> / <span>Deodorants</span></div></div>
+<div class="wrap"><div class="chead"><h1>Deodorants</h1><p>Authentic &bull; Transparent &bull; Sustainable</p></div>
+<div class="catstrip"><div class="cstrack" id="cstrack"><a class="ctile" href="collection-face.html"><img src="assets/f5f8bf7d00426fa013144f36b5ff45e4.webp" alt="Face Care" loading="lazy">
+<span class="cc"><b>Face Care</b><span>45 products</span></span></a><a class="ctile" href="collection-hair-care-view-all.html"><img src="assets/da12a089d313ed345be5ebbd3d296052.webp" alt="Hair Care" loading="lazy">
+<span class="cc"><b>Hair Care</b><span>22 products</span></span></a><a class="ctile" href="collection-body-care-view-all.html"><img src="assets/45114d5f3db46df3b9d6091602322575.webp" alt="Body Care" loading="lazy">
+<span class="cc"><b>Body Care</b><span>38 products</span></span></a><a class="ctile" href="collection-lip-care.html"><img src="assets/2e0eb5fed74939f9b64743ba63f94bd3.webp" alt="Lip Care" loading="lazy">
+<span class="cc"><b>Lip Care</b><span>6 products</span></span></a><a class="ctile" href="collection-eye-care.html"><img src="assets/d443772d19400d9b358a658a367b52da.webp" alt="Eye Care" loading="lazy">
+<span class="cc"><b>Eye Care</b><span>3 products</span></span></a><a class="ctile" href="collection-combo.html"><img src="assets/16783c7630f45068d59ff332f079cfc3.webp" alt="Combos" loading="lazy">
+<span class="cc"><b>Combos</b><span>25 products</span></span></a><a class="ctile" href="collection-travel-minis.html"><img src="assets/9153d5055296aba3ae406b4d2f35c774.webp" alt="Travel Minis" loading="lazy">
+<span class="cc"><b>Travel Minis</b><span>24 products</span></span></a><a class="ctile" href="collection-baby-care.html"><img src="assets/59a31b0f745485b35b3a9d194f086a76.webp" alt="Baby Care" loading="lazy">
+<span class="cc"><b>Baby Care</b><span>4 products</span></span></a><a class="ctile" href="collection-gifting.html"><img src="assets/9ff11f0fabd198fcb44919010c64068e.webp" alt="Gifting" loading="lazy">
+<span class="cc"><b>Gifting</b><span>10 products</span></span></a></div>
+<button class="rarw r" style="top:34px" onclick="document.getElementById('cstrack').scrollBy({left:500,behavior:'smooth'})">&rsaquo;</button></div>
+<div class="fbar"><div class="left"><span style="font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px">Filter</span><button class="chip" onclick="setFilter(this,'all')">All</button><button class="chip" onclick="setFilter(this,'under300')">Under ₹300</button><button class="chip" onclick="setFilter(this,'300to600')">₹300 – ₹600</button><button class="chip" onclick="setFilter(this,'above600')">Above ₹600</button><button class="chip" onclick="setFilter(this,'combo')">Combos</button><button class="chip" onclick="setFilter(this,'mini')">Minis</button></div>
+<div class="mfbtn"><button onclick="openSheet('fSheet')">Filter</button><button onclick="openSheet('sSheet')">Sort</button></div>
+<div style="display:flex;align-items:center;gap:14px"><span class="cnt" id="cnt"></span>
+<select id="sortSel" onchange="applyAll()"><option value="feat">Sort: Featured</option><option value="lo">Price, low to high</option><option value="hi">Price, high to low</option><option value="rev">Most reviewed</option><option value="az">Alphabetically, A–Z</option></select></div></div>
+<div class="grid" id="plpGrid"></div>
+<div style="text-align:center;padding:36px 0 60px"><button class="atc" style="max-width:260px" onclick="toast('That is the whole collection in this mockup')">Load more</button></div>
+</div>
+<div class="sheet" id="fSheet"><div class="grip"></div><h6>Filter by price</h6><div class="chips"><button class="chip" onclick="setFilter(this,'all')">All</button><button class="chip" onclick="setFilter(this,'under300')">Under ₹300</button><button class="chip" onclick="setFilter(this,'300to600')">₹300 – ₹600</button><button class="chip" onclick="setFilter(this,'above600')">Above ₹600</button><button class="chip" onclick="setFilter(this,'combo')">Combos</button><button class="chip" onclick="setFilter(this,'mini')">Minis</button></div>
+<button class="apply" onclick="closeAll()">Show results</button></div>
+<div class="sheet" id="sSheet"><div class="grip"></div><h6>Sort by</h6><div class="chips">
+<button class="chip" onclick="setSort(this,&quot;feat&quot;)">Featured</button><button class="chip" onclick="setSort(this,&quot;lo&quot;)">Price, low to high</button><button class="chip" onclick="setSort(this,&quot;hi&quot;)">Price, high to low</button><button class="chip" onclick="setSort(this,&quot;rev&quot;)">Most reviewed</button><button class="chip" onclick="setSort(this,&quot;az&quot;)">A–Z</button>
+</div><button class="apply" onclick="closeAll()">Show results</button></div>
+
+</div>
+<script src="app.js"></script>
+<script>
+window.COLIMG = {"skincare-bestsellers": "assets/fd80acc0adc9f8f0a28f936e63b89d67.webp", "best-sellers": "assets/ddaea0d99b2c350041c9929cd9c7edb3.webp", "hair-care-view-all": "assets/da12a089d313ed345be5ebbd3d296052.webp", "face": "assets/f5f8bf7d00426fa013144f36b5ff45e4.webp", "lip-care": "assets/2e0eb5fed74939f9b64743ba63f94bd3.webp", "combo": "assets/16783c7630f45068d59ff332f079cfc3.webp", "cosmetics": "assets/3ce4ceb0f188c0765dea6c6b3d63fcb1.webp", "eye-care": "assets/d443772d19400d9b358a658a367b52da.webp", "body-care-view-all": "assets/45114d5f3db46df3b9d6091602322575.webp", "travel-minis": "assets/9153d5055296aba3ae406b4d2f35c774.webp", "skin-serum": "assets/b33bc4cf09a58b2bf4980ec084e45fab.webp", "toner": "assets/2b8d4a50ee1dc9232f6df6d16d320e0e.webp", "face-wash": "assets/c269d36ef9e97d1d55f3563fb40574fc.webp", "face-scrub": "assets/7b4012932dedcc2bf19cc4a783c1e45c.webp", "face-packs-masks": "assets/252afad4de64f240387dd68da2eca9b4.webp", "face-cream-sunscreen": "assets/9866bb504c3492320690852baf4e5dcb.webp", "oral-care": "assets/f8a4b75eba398f6d407e9cf9dc44e234.webp", "shampoo-conditioner": "assets/a4debcdc5efb811e2a69b7340dc41a14.webp", "hair-oil": "assets/1465d259d128d6ca803f7f8ee318ab26.webp", "combs": "assets/a2318e4bc8516c0583c38f7d32ff1f12.webp", "handmade-soap": "assets/3876fe99ce18d4bc405d89d139ee80ad.webp", "body-butter": "assets/aa08ed92f9ae888179cb2558963a6894.webp", "body-lotion-sunscreen": "assets/e8fffb8a77ed8c3f0501116488f22ce4.webp", "body-wash": "assets/fa1aa43a4eb7ed448c105a656df55e19.webp", "scrub": "assets/f18188bf87cae9d6586d47850b618ebb.webp", "foot-care": "assets/1de9121ea4448be8778b95f306d0ac96.webp", "powder": "assets/d44e41828fc89c60af4252b14cf01658.webp", "deo": "assets/72bd0a56a95cbad2e4e7427c0a45ffaa.webp", "baby-care": "assets/59a31b0f745485b35b3a9d194f086a76.webp", "gifting": "assets/9ff11f0fabd198fcb44919010c64068e.webp"};
+renderChrome("collection-deo.html");
+
+var ITEMS = ["rose-deo-mini-10-gms", "vanilla-deo-mini-10-gms", "vanilla-deo", "rose-deo", "vanilla-talc-free-powder"];
+var FILT='all', SORT='feat';
+function openSheet(id){document.getElementById(id).classList.add('open');showOvl(true);}
+function setFilter(b,k){FILT=k;qa('.fbar .chip,.sheet .chip').forEach(function(x){if(x.getAttribute('onclick').indexOf('setFilter')>-1)x.classList.remove('on');});
+ qa('.chip').forEach(function(x){if(x.getAttribute('onclick')==="setFilter(this,'"+k+"')")x.classList.add('on');});applyAll();}
+function setSort(b,k){SORT=k;document.getElementById('sortSel').value=k;applyAll();}
+function applyAll(){
+  SORT = document.getElementById('sortSel').value || SORT;
+  var out = ITEMS.filter(function(h){var p=CAT[h];if(!p)return false;
+    if(FILT==='under300')return p.price<300; if(FILT==='300to600')return p.price>=300&&p.price<=600;
+    if(FILT==='above600')return p.price>600; if(FILT==='combo')return /combo/i.test(p.title);
+    if(FILT==='mini')return /mini/i.test(p.title); return true;});
+  if(SORT==='lo')out.sort(function(a,b){return CAT[a].price-CAT[b].price;});
+  if(SORT==='hi')out.sort(function(a,b){return CAT[b].price-CAT[a].price;});
+  if(SORT==='rev')out.sort(function(a,b){return CAT[b].rev-CAT[a].rev;});
+  if(SORT==='az')out.sort(function(a,b){return CAT[a].title.localeCompare(CAT[b].title);});
+  renderGrid('plpGrid',out);
+  document.getElementById('cnt').textContent=out.length+' products';
+}
+applyAll();
+
+</script>
+</body></html>
